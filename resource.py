@@ -1,17 +1,17 @@
-import re,time
+import re,time,vk_api
 
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
+from vk_api.bot_longpoll import VkBotEventType
 from pymongo import MongoClient
 
 
 class Properties():
     def __init__(self):
         #Токен, ключ доступа
-        self.token = 'токен'
+        self.token = ''
         #id группы
-        self.groupId = 'id группы'
-        #id админов
-        self.adminId = [2,3,4]
+        self.groupId = '11233213'
+        self.adminId = [1,111]
 
 class Classificator():
     def __init__(self):
@@ -19,13 +19,13 @@ class Classificator():
         self.questionLib = [[["полож", "нахо", "полог", "адрес" , "ехат", "братьс", "йти", "ползт","попас", "дти"], ["музе", "органи", "клуб", "выстав", "зал", "завде", "здани","вас","вы"]],
                             [["работ", "откр","закр","граф","расп"], ["музе", "органи", "клуб", "выстав", "зал", "завде", "здани","вас","вы","как","когд","во скольк","работ"]],
                             [["стои", "купи" "поч", "цена", "брест"], ["музе", "билет", "посещен", "экскурс"] ],
-                            [["что такое","чем"],[,"музе"]]]
+                            [["что такое","чем"],["оранэл","оранел","музе"]]]
 
         #Фразы
-        self.location = "Наш музей расположен по адресу:\n Ул простая\n Проход пешком от станции метро Метрошная 1,1км 15 минут"
-        self.worktime = "Наш музей работает с понедельника по пятницу с 11 д12 часов"
+        self.location = "Наш музей расположен по адресу:\n пр. Стачек, 91-А, Санкт-Петербург\n Проход пешком от станции метро Автово 1,1км 15 минут https://pp.userapi.com/c850324/v850324443/18b673/8uRZ-_lXi3E.jpg"
+        self.worktime = "Наш музей работает с понедельника по пятницу с 10 до 19 часов"
         self.ticket = "Посещение нашего музея бесплатно.\nДля групп может быть оргинизована экскурсия по предварительной записи, стоимость экскурсии{price}"
-        self.oranela = 'Музей классный'
+        self.oranela = 'Оранэла - «Ораниенбаумская электрическая линия».\n\nЭто уникальная железнодорожная линия, созданная в Санкт-Петербурге в начале XX века вдоль Петергофской дороги, которая должна была связать Нарвскую заставу со Стрельной, Петергофом, Ораниенбаумом и Красной Горкой, общая длина составляет примерно 66 км). По сути, Ораниенбаумская электрическая линия — первый в Российской империи проект пригородных электропоездов'
         self.imbot = 'Я всего лишь машина, я не знаю ответа на этот вопрос, напишите "Ошибка" и Ваш вопрос будет отправден человеку'
         self.hello = 'Если у Вас есть вопросы к нам, вы можете задать их прямо здесь. Наш бот постарается ответить на него, если Вы не поучите ответ, сообщите об ошибке и наш модератор ответит Вам в ближайшее время'
         self.subscribeAdd = 'Спасибо за подписку)\nТеперь самые интересные новости будут приходить вам в личные сообщения'
@@ -34,7 +34,7 @@ class Classificator():
         self.subscribeErr = 'Сервис подписок временно недоступен'
         self.errMesA = 'REPORT\n----------\n{}\n{} {}\n'
         self.errMesU = 'Ваш вопрос был перенаправлен модератеру, ожидайте ответа на свой вопрос.\nСпасибо, что помогаете нам стать лучше'
-        self.audiogide = 'Аудиогид по нашему музею можно послушать на сервисе IZITravel link.link'
+        self.audiogide = 'Аудиогид по нашему музею можно послушать на сервисе IZITravel https://izi.travel/ru/8e2c-muzey-oranely'
         
         #Подключение к БД
         self.DBCon = MongoClient()
@@ -51,7 +51,7 @@ class Classificator():
 
     def keyboardMain(self):
         keyboard = VkKeyboard(one_time=True)
-        keyboard.add_button('Что такое музей?', color=VkKeyboardColor.PRIMARY)
+        keyboard.add_button('Что такое Оранэла?', color=VkKeyboardColor.PRIMARY)
         keyboard.add_line()
         keyboard.add_button('Расписание музея?', color=VkKeyboardColor.PRIMARY)
         keyboard.add_button('Адрес музея?', color=VkKeyboardColor.PRIMARY)
@@ -112,7 +112,7 @@ class Classificator():
     0 - место музея
     1 - график работы
     2 - билет
-    3 - музей
+    3 - оранэла
     etc
     '''
 
@@ -146,3 +146,57 @@ class Classificator():
             keyboard = self.keyboardQuestion()
         return(mes, keyboard)
             
+class VKGet(Properties):
+    def initSession(self):
+        vk_session = vk_api.VkApi(token=self.token)
+        return(vk_session.get_api())
+    def getUser(self,id):
+        return(self.initSession().users.get(user_ids=id))
+        
+    
+class Log(VKGet):
+    def nowtime(self):
+        return(time.strftime("%Y.%m.%d at %H:%M:%S:",time.localtime()))
+    
+    def logfilename(self):
+        return('log'+ time.strftime("%Y%m%d",time.localtime()))
+
+    def logRepost(self,obj):
+        if obj.from_id > 0 and obj.owner_id > 0:
+            fromUser = self.getUser(obj.from_id)
+            ownerUser = self.getUser(obj.owner_id)
+
+            mes = 'Repost wall No {} | from {} {} {} to {} {} {} at [ {} ]'.format(obj.copy_history[0]['id'],
+                fromUser[0]['id'], fromUser[0]['first_name'], fromUser[0]['last_name'],
+                ownerUser[0]['id'], ownerUser[0]['first_name'], ownerUser[0]['last_name'],
+                self.nowtime())
+            return(mes)
+        return('GROUP REPOST TO PUBLIC')
+    
+    def logNewMes(self,obj):
+        if obj.from_id > 0:
+            fromUser = self.getUser(obj.from_id)
+
+            mes = 'New message | from {} {} {} to our group at [ {} ]'.format(
+                fromUser[0]['id'], fromUser[0]['first_name'], fromUser[0]['last_name'],
+                self.nowtime())
+        else:
+            mes = 'New message | from group [{}] to our group at [ {} ]'.format( obj.from_id,self.nowtime() )
+        return(mes)
+        
+
+    
+    def log(self, type, obj):
+        logid = self.logfilename()
+
+        if type == VkBotEventType.WALL_REPOST:
+            mes = self.logRepost(obj)
+        elif type == VkBotEventType.MESSAGE_NEW:
+            mes = self.logNewMes(obj)
+        else:
+            mes = 'Unknown type at[ {} ]'.format(self.nowtime())
+
+        f = open(logid, 'a')
+        f.write(mes)
+        print('Repost add to logfile')
+        return True

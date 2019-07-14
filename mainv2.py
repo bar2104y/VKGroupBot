@@ -1,9 +1,9 @@
-import vk_api, re
-import time
-from resource import Properties, Classificator
+import vk_api, re, time
+from resource import Properties, Classificator, Log
 
 Prop = Properties()
 Controller = Classificator()
+Log = Log()
 
 
 from pymongo import MongoClient
@@ -18,15 +18,6 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.utils import get_random_id
 
-def log(obj):
-    nowTime = time.strftime("%Y.%m.%d at %H:%M:%S:",time.localtime())
-    logid = 'log'+ time.strftime("%Y%m%d",time.localtime())
-
-    mes = 'From {} | Type: mes | [{}]\n'.format(obj.from_id, nowTime)
-    f = open(logid, 'a')
-    f.write(mes)
-    print('Mess add to logfile')
-    return True
 
 #Лог о репорте
 def logErr(obj):
@@ -67,7 +58,6 @@ def main():
                     )
                 logErr(event.obj)
             else:
-                log(event.obj)
                 vk.messages.send(
                     peer_id=event.obj.from_id,
                     random_id=get_random_id(),
@@ -75,9 +65,13 @@ def main():
                     message=mes
                 )
 
-            print('Новое сообщение!')
+            print('New message')
+        elif event.type == VkBotEventType.WALL_REPOST:
+            print('Repost')
         else:
             print(event.type)
+        
+        Log.log(event.type, event.obj)
 
 
 if __name__ == '__main__':
